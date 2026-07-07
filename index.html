@@ -134,17 +134,28 @@
   .controls{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:28px;}
   .replay-note{font-size:13px;color:var(--dim);margin-top:6px;}
 
+  /* answer reveal: full-screen slide overlay */
   .answer{
-    margin-top:28px;padding:24px;border-radius:16px;
-    background:rgba(255,211,77,.08);border:1px solid rgba(255,211,77,.35);
+    position:fixed;inset:0;z-index:40;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    text-align:center;gap:6px;padding:3vh 3vw;
+    background:
+      radial-gradient(ellipse 70% 50% at 50% -10%, rgba(255,211,77,.10), transparent 60%),
+      rgba(6,4,16,.97);
   }
-  .answer .alabel{font-size:13px;letter-spacing:.3em;color:var(--gold);font-weight:800;margin-bottom:8px;}
-  .answer .title-clip{overflow:hidden;margin-bottom:14px;}
-  .answer .title{font-size:clamp(24px,5.5vw,40px);font-weight:900;color:var(--gold);text-shadow:0 0 30px rgba(255,211,77,.4);}
+  .answer .alabel{font-size:14px;letter-spacing:.3em;color:var(--gold);font-weight:800;margin-bottom:4px;}
+  .answer .title-clip{overflow:hidden;margin-bottom:12px;}
+  .answer .title{font-size:clamp(30px,5.5vw,58px);font-weight:900;color:var(--gold);text-shadow:0 0 40px rgba(255,211,77,.45);line-height:1.15;}
   .answer .title.rise{animation:riseUp .65s cubic-bezier(.2,.85,.25,1) both;}
   @keyframes riseUp{from{transform:translateY(110%);opacity:0;}to{transform:translateY(0);opacity:1;}}
   @media (prefers-reduced-motion:reduce){.answer .title.rise{animation:none;}}
-  .video-box{max-width:860px;margin:0 auto;border-radius:12px;overflow:hidden;background:#000;box-shadow:0 10px 40px rgba(0,0,0,.5);}
+  .overlay-controls{display:flex;gap:12px;margin-top:18px;flex-wrap:wrap;justify-content:center;}
+  /* video sized to fill the slide: limited by both width and viewport height (16:9) */
+  .video-box{
+    width:min(94vw, calc((100vh - 230px) * 1.7778));
+    margin:0 auto;border-radius:12px;overflow:hidden;background:#000;
+    box-shadow:0 14px 60px rgba(0,0,0,.6);
+  }
   .video-box video{width:100%;display:block;}
   .yt-ratio{position:relative;padding-bottom:56.25%;height:0;}
   .yt-ratio iframe{position:absolute;inset:0;width:100%;height:100%;border:0;}
@@ -237,22 +248,27 @@
         <button class="btn" id="nextBtn">다음 문제 →</button>
       </div>
       <div class="replay-note" id="replayNote"></div>
-
-      <div class="answer hidden" id="answerBox">
-        <div class="alabel">ANSWER</div>
-        <div class="title-clip"><div class="title" id="answerTitle"></div></div>
-        <div class="video-box hidden" id="localVideoBox">
-          <video id="localVideo" playsinline controls></video>
-        </div>
-        <div class="video-box hidden" id="ytVideoBox">
-          <div class="yt-ratio"><div id="ytRevealMount"></div></div>
-        </div>
-        <a id="ytFallback" class="btn small hidden" target="_blank" rel="noopener" style="display:inline-block;margin-top:14px;text-decoration:none;">▶ 새 탭에서 MV 보기</a>
-        <div class="replay-note hidden" id="audioOnlyNote">원곡 3초 재생 중…</div>
-      </div>
     </div>
     <div class="kbd-help">
       <kbd>Space</kbd> 재생 · <kbd>R</kbd> 한 번 더 · <kbd>Enter</kbd> 정답 · <kbd>→</kbd> 다음
+    </div>
+  </div>
+
+  <!-- answer reveal slide (full-screen overlay) -->
+  <div class="answer hidden" id="answerBox">
+    <div class="alabel">ANSWER</div>
+    <div class="title-clip"><div class="title" id="answerTitle"></div></div>
+    <div class="video-box hidden" id="localVideoBox">
+      <video id="localVideo" playsinline controls></video>
+    </div>
+    <div class="video-box hidden" id="ytVideoBox">
+      <div class="yt-ratio"><div id="ytRevealMount"></div></div>
+    </div>
+    <a id="ytFallback" class="btn small hidden" target="_blank" rel="noopener" style="display:inline-block;text-decoration:none;">▶ 새 탭에서 MV 보기</a>
+    <div class="replay-note hidden" id="audioOnlyNote">원곡 3초 재생 중…</div>
+    <div class="overlay-controls">
+      <button class="btn" id="closeRevealBtn">← 문제로 돌아가기 (Esc)</button>
+      <button class="btn primary" id="overlayNextBtn">다음 문제 →</button>
     </div>
   </div>
 
@@ -632,8 +648,15 @@
 
   $('nextBtn').onclick=()=>{
     stopAll();
+    $('answerBox').classList.add('hidden');
     if(cur===songs.length-1){ game.classList.add('hidden'); end.classList.remove('hidden'); }
     else { cur++; loadQuestion(); }
+  };
+
+  $('overlayNextBtn').onclick=()=>$('nextBtn').click();
+  $('closeRevealBtn').onclick=()=>{
+    stopAll();
+    $('answerBox').classList.add('hidden');
   };
 
   $('restartBtn').onclick=()=>{
@@ -645,6 +668,12 @@
   document.addEventListener('keydown',e=>{
     if(game.classList.contains('hidden')) return;
     if(e.target.tagName==='INPUT') return;
+    const overlayOpen = !$('answerBox').classList.contains('hidden');
+    if(overlayOpen){
+      if(e.key==='Escape'){ $('closeRevealBtn').click(); }
+      else if(e.key==='Enter'||e.key==='ArrowRight'){ e.preventDefault(); $('nextBtn').click(); }
+      return;
+    }
     if(e.code==='Space'){ e.preventDefault(); $('playDisc').click(); }
     else if(e.key==='r'||e.key==='R'){ $('replayBtn').click(); }
     else if(e.key==='Enter'){ $('revealBtn').click(); }
