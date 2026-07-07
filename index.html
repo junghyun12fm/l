@@ -29,7 +29,7 @@
       radial-gradient(ellipse 55% 40% at 80% -10%, rgba(62,230,255,.15), transparent 60%),
       radial-gradient(ellipse 70% 50% at 50% 115%, rgba(108,92,255,.20), transparent 65%);
   }
-  .wrap{position:relative;z-index:1;max-width:900px;margin:0 auto;padding:32px 20px 60px;min-height:100%;}
+  .wrap{position:relative;z-index:1;max-width:1020px;margin:0 auto;padding:32px 20px 60px;min-height:100%;}
 
   .eyebrow{font-size:14px;letter-spacing:.12em;color:var(--cyan);margin-bottom:10px;font-weight:700;}
   h1{font-size:clamp(26px,5vw,42px);font-weight:900;letter-spacing:-.02em;line-height:1.15;}
@@ -139,8 +139,12 @@
     background:rgba(255,211,77,.08);border:1px solid rgba(255,211,77,.35);
   }
   .answer .alabel{font-size:13px;letter-spacing:.3em;color:var(--gold);font-weight:800;margin-bottom:8px;}
-  .answer .title{font-size:clamp(24px,5.5vw,40px);font-weight:900;color:var(--gold);text-shadow:0 0 30px rgba(255,211,77,.4);margin-bottom:14px;}
-  .video-box{max-width:640px;margin:0 auto;border-radius:12px;overflow:hidden;background:#000;box-shadow:0 10px 40px rgba(0,0,0,.5);}
+  .answer .title-clip{overflow:hidden;margin-bottom:14px;}
+  .answer .title{font-size:clamp(24px,5.5vw,40px);font-weight:900;color:var(--gold);text-shadow:0 0 30px rgba(255,211,77,.4);}
+  .answer .title.rise{animation:riseUp .65s cubic-bezier(.2,.85,.25,1) both;}
+  @keyframes riseUp{from{transform:translateY(110%);opacity:0;}to{transform:translateY(0);opacity:1;}}
+  @media (prefers-reduced-motion:reduce){.answer .title.rise{animation:none;}}
+  .video-box{max-width:860px;margin:0 auto;border-radius:12px;overflow:hidden;background:#000;box-shadow:0 10px 40px rgba(0,0,0,.5);}
   .video-box video{width:100%;display:block;}
   .yt-ratio{position:relative;padding-bottom:56.25%;height:0;}
   .yt-ratio iframe{position:absolute;inset:0;width:100%;height:100%;border:0;}
@@ -236,7 +240,7 @@
 
       <div class="answer hidden" id="answerBox">
         <div class="alabel">ANSWER</div>
-        <div class="title" id="answerTitle"></div>
+        <div class="title-clip"><div class="title" id="answerTitle"></div></div>
         <div class="video-box hidden" id="localVideoBox">
           <video id="localVideo" playsinline controls></video>
         </div>
@@ -464,7 +468,11 @@
     if(ytOnly && !EMBED_OK){
       toast('유튜브만 넣은 곡은 이 환경에서 클립 재생이 안 돼요. 정답 MV는 새 탭으로 열립니다.');
     }
-    songs.sort(()=>Math.random()-0.5);
+    // Fisher–Yates shuffle: 진짜 무작위 순서 (교사도 예측 불가)
+    for(let i=songs.length-1;i>0;i--){
+      const j=Math.floor(Math.random()*(i+1));
+      [songs[i],songs[j]]=[songs[j],songs[i]];
+    }
     songs.forEach(s=>{
       if(posMode==='start'){ s.offset = 0; return; }
       if(s.file && s.file.buffer){
@@ -584,7 +592,9 @@
   $('revealBtn').onclick=()=>{
     const s=curSong();
     stopAll();
-    $('answerTitle').textContent=s.title;
+    const at=$('answerTitle');
+    at.textContent=s.title;
+    at.classList.remove('rise'); void at.offsetWidth; at.classList.add('rise');
     $('answerBox').classList.remove('hidden');
     const hl = s.highlight!=='' && !isNaN(parseFloat(s.highlight)) ? parseFloat(s.highlight) : 50;
 
