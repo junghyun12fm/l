@@ -180,6 +180,49 @@
 
   .end{text-align:center;padding:70px 10px;}
 
+  /* live scoreboard (top-left, above everything) */
+  .scoreboard{
+    position:fixed;top:14px;left:14px;z-index:45;
+    background:rgba(10,7,26,.92);border:1px solid rgba(255,255,255,.16);
+    border-radius:12px;padding:10px 14px;min-width:140px;max-width:230px;
+    max-height:70vh;overflow:auto;backdrop-filter:blur(8px);
+  }
+  .scoreboard h3{font-size:11px;letter-spacing:.25em;color:var(--cyan);margin-bottom:6px;font-weight:800;}
+  .score-row{display:flex;justify-content:space-between;gap:14px;font-size:14px;padding:2px 0;font-weight:700;}
+  .score-row .pts{color:var(--gold);}
+  .score-row.top1 span:first-child{color:var(--gold);}
+
+  /* student chips on answer slide */
+  .chips{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;max-width:92vw;flex:none;margin-top:14px;}
+  .chip{
+    padding:10px 18px;border-radius:10px;cursor:pointer;
+    border:1px solid rgba(255,255,255,.28);background:rgba(255,255,255,.07);
+    color:var(--text);font-weight:800;font-size:15px;font-family:inherit;
+    transition:transform .08s;
+  }
+  .chip:hover{transform:translateY(-2px);}
+  .chip:focus-visible{outline:2px solid var(--cyan);outline-offset:2px;}
+  .chip.awarded{
+    background:linear-gradient(90deg,var(--pink),var(--violet));
+    border-color:transparent;box-shadow:0 4px 18px rgba(255,62,138,.45);
+  }
+  .chip.awarded::after{content:' +1';color:var(--gold);}
+  /* team boxes on roster screen */
+  #teamBoxes{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px;margin-top:14px;}
+  .team-box{
+    background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);
+    border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:8px;
+  }
+  .team-box .team-name{
+    background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.15);
+    color:var(--cyan);border-radius:8px;padding:8px 10px;font-size:15px;font-weight:800;font-family:inherit;
+  }
+  .team-box textarea{
+    background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.12);
+    color:var(--text);border-radius:8px;padding:8px 10px;font-size:14px;font-family:inherit;resize:vertical;
+  }
+  .team-box input:focus,.team-box textarea:focus{outline:2px solid var(--violet);outline-offset:1px;}
+
   /* intro screen */
   .intro{
     min-height:82vh;display:flex;flex-direction:column;
@@ -262,6 +305,40 @@
     </div>
   </div>
 
+  <!-- ========== ROSTER (참가 학생) ========== -->
+  <div id="roster" class="hidden">
+    <div class="eyebrow">참가자 등록</div>
+    <h1><span class="accent">참가 학생 명단</span></h1>
+    <div class="card">
+      <h2>진행 방식</h2>
+      <div class="settings">
+        <div class="seg" id="modeSeg">
+          <button data-mode="solo" class="on">개인전</button>
+          <button data-mode="team">팀전</button>
+        </div>
+      </div>
+    </div>
+    <div class="card" id="soloPanel">
+      <h2>학생 이름 입력</h2>
+      <p class="sub" style="margin-top:0;margin-bottom:12px;">쉼표(,)로 구분해서 입력하세요. 예: 김민준, 이서연, 박지호<br>비워두면 점수 기능 없이 진행됩니다.</p>
+      <textarea id="rosterInput" rows="4" placeholder="김민준, 이서연, 박지호, …"
+        style="width:100%;background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.12);color:var(--text);border-radius:9px;padding:12px;font-size:15px;font-family:inherit;resize:vertical;"></textarea>
+    </div>
+    <div class="card hidden" id="teamPanel">
+      <h2>팀 구성</h2>
+      <div class="settings">
+        <span class="label">팀 수</span>
+        <input type="number" id="teamCount" class="in-sec" min="2" max="12" value="4"
+          style="background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.12);color:var(--text);border-radius:9px;padding:9px 12px;font-size:14.5px;font-family:inherit;width:90px;">
+      </div>
+      <div id="teamBoxes"></div>
+    </div>
+    <div class="start-bar" style="gap:12px;">
+      <button class="btn" id="rosterBackBtn">← 문제 목록으로</button>
+      <button class="btn primary" id="rosterNextBtn">인트로 화면으로 ▶</button>
+    </div>
+  </div>
+
   <!-- ========== INTRO ========== -->
   <div id="intro" class="hidden">
     <div class="intro">
@@ -316,6 +393,7 @@
     </div>
     <a id="ytFallback" class="btn small hidden" target="_blank" rel="noopener" style="display:inline-block;text-decoration:none;">▶ 새 탭에서 MV 보기</a>
     <div class="replay-note hidden" id="audioOnlyNote">원곡 3초 재생 중…</div>
+    <div class="chips hidden" id="studentChips"></div>
     <div class="overlay-controls">
       <button class="btn" id="closeRevealBtn">← 문제로 돌아가기 (Esc)</button>
       <button class="btn primary" id="overlayNextBtn">다음 문제 →</button>
@@ -334,6 +412,10 @@
 
 <!-- offscreen YT player: quiz clips when only a YouTube link is given -->
 <div id="ytQuizDock"><div id="ytQuizMount"></div></div>
+<div class="scoreboard hidden" id="scoreboard">
+  <h3>SCOREBOARD</h3>
+  <div id="scoreRows"></div>
+</div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -342,6 +424,63 @@
   let ctx = null;
   const songs = []; // {title, file:{name,url,isVideo,buffer}, ytId, ytStart, offset}
   let clipLen = 0.2, posMode = 'random', cur = 0, playsUsed = 0, hintCount = 0, growCount = 0;
+  let students = [];              // {name, score}
+  const awarded = new Set();      // 현재 문제에서 점수 준 학생/팀 index
+  const esc = t => String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+  let rosterMode = 'solo';        // 'solo' | 'team'
+  let teams = [];                 // {name, members}
+
+  function renderTeams(){
+    const n = Math.max(2, Math.min(12, parseInt($('teamCount').value,10)||2));
+    while(teams.length<n) teams.push({name:`${teams.length+1}팀`, members:''});
+    teams.length=n;
+    const box=$('teamBoxes'); box.innerHTML='';
+    teams.forEach((t,i)=>{
+      const div=document.createElement('div'); div.className='team-box';
+      div.innerHTML=`
+        <input class="team-name" value="${esc(t.name).replace(/"/g,'&quot;')}" placeholder="${i+1}팀">
+        <textarea class="team-members" rows="2" placeholder="팀원 이름 (쉼표로 구분, 선택사항)">${esc(t.members)}</textarea>`;
+      div.querySelector('.team-name').oninput = ev=>{ t.name=ev.target.value; saveRoster(); };
+      div.querySelector('.team-members').oninput = ev=>{ t.members=ev.target.value; saveRoster(); };
+      box.appendChild(div);
+    });
+  }
+
+  function saveRoster(){
+    try{ db && db.transaction('kv','readwrite').objectStore('kv')
+      .put({mode:rosterMode, solo:$('rosterInput').value, teamCount:teams.length, teams:teams.map(t=>({name:t.name,members:t.members}))},'roster'); }catch(e){}
+  }
+
+  function renderScoreboard(){
+    if(!students.length){ $('scoreboard').classList.add('hidden'); return; }
+    const scored=[...students].filter(st=>st.score>0).sort((a,b)=>b.score-a.score);
+    if(!scored.length){
+      $('scoreRows').innerHTML='<div class="score-row" style="color:var(--dim);font-weight:600;">아직 득점 없음</div>';
+      return;
+    }
+    const topScore=scored[0].score;
+    $('scoreRows').innerHTML=scored.map(st=>
+      `<div class="score-row${st.score===topScore?' top1':''}"><span>${esc(st.name)}</span><span class="pts">${st.score}</span></div>`
+    ).join('');
+  }
+
+  function renderChips(){
+    const box=$('studentChips');
+    if(!students.length){ box.classList.add('hidden'); return; }
+    box.classList.remove('hidden');
+    box.innerHTML='';
+    students.forEach((st,i)=>{
+      const b=document.createElement('button');
+      b.className='chip'+(awarded.has(i)?' awarded':'');
+      b.textContent=st.name;
+      b.onclick=()=>{
+        if(awarded.has(i)){ awarded.delete(i); st.score--; }   // 실수로 눌렀을 때 다시 누르면 취소
+        else { awarded.add(i); st.score++; }
+        renderChips(); renderScoreboard();
+      };
+      box.appendChild(b);
+    });
+  }
   let currentSource = null, clipTimer = null;
   let ytReady = false, ytQuiz = null, ytReveal = null, ytLoadTried = false;
   // YouTube embeds require a referer header (enforced since late 2025).
@@ -379,6 +518,28 @@
   }
   async function loadState(){
     db=await openDB(); if(!db) return;
+    // 진행 방식·명단·팀 구성 복원
+    const rosterSaved=await new Promise(res=>{ try{
+      const rq=db.transaction('kv').objectStore('kv').get('roster');
+      rq.onsuccess=()=>res(rq.result); rq.onerror=()=>res(null);
+    }catch(e){res(null);} });
+    if(typeof rosterSaved==='string'){
+      $('rosterInput').value=rosterSaved; // 이전 버전 데이터
+    } else if(rosterSaved && typeof rosterSaved==='object'){
+      $('rosterInput').value=rosterSaved.solo||'';
+      if(Array.isArray(rosterSaved.teams) && rosterSaved.teams.length){
+        teams=rosterSaved.teams.map(t=>({name:t.name||'', members:t.members||''}));
+        $('teamCount').value=teams.length;
+        renderTeams();
+      }
+      if(rosterSaved.mode==='team'){
+        rosterMode='team';
+        $('modeSeg').querySelectorAll('button').forEach(x=>x.classList.toggle('on', x.dataset.mode==='team'));
+        $('soloPanel').classList.add('hidden');
+        $('teamPanel').classList.remove('hidden');
+        if(!$('teamBoxes').children.length) renderTeams();
+      }
+    }
     const data=await new Promise(res=>{ try{
       const rq=db.transaction('kv').objectStore('kv').get('songs');
       rq.onsuccess=()=>res(rq.result); rq.onerror=()=>res(null);
@@ -598,6 +759,38 @@
     }
     cur=0;
     setup.classList.add('hidden'); end.classList.add('hidden'); game.classList.add('hidden');
+    $('roster').classList.remove('hidden');
+    $('rosterInput').focus();
+  };
+
+  $('rosterInput').oninput = ()=>saveRoster();
+
+  $('modeSeg').onclick = e=>{
+    const b=e.target.closest('button'); if(!b)return;
+    $('modeSeg').querySelectorAll('button').forEach(x=>x.classList.remove('on'));
+    b.classList.add('on'); rosterMode=b.dataset.mode;
+    $('soloPanel').classList.toggle('hidden', rosterMode!=='solo');
+    $('teamPanel').classList.toggle('hidden', rosterMode!=='team');
+    if(rosterMode==='team' && !$('teamBoxes').children.length) renderTeams();
+    saveRoster();
+  };
+
+  $('teamCount').oninput = ()=>{ renderTeams(); saveRoster(); };
+
+  $('rosterBackBtn').onclick=()=>{
+    $('roster').classList.add('hidden');
+    setup.classList.remove('hidden');
+  };
+
+  $('rosterNextBtn').onclick=()=>{
+    if(rosterMode==='team'){
+      students=teams.map((t,i)=>({name:t.name.trim()||`${i+1}팀`, score:0}));
+    } else {
+      const names=$('rosterInput').value.split(/[,，\n]/).map(t=>t.trim()).filter(Boolean);
+      students=names.map(n=>({name:n, score:0}));
+    }
+    saveRoster();
+    $('roster').classList.add('hidden');
     intro.classList.remove('hidden');
     const it=$('introTitle');
     it.classList.remove('rise'); void it.offsetWidth; it.classList.add('rise');
@@ -606,6 +799,8 @@
   $('introStartBtn').onclick=()=>{
     intro.classList.add('hidden');
     game.classList.remove('hidden');
+    renderScoreboard();
+    if(students.length) $('scoreboard').classList.remove('hidden');
     loadQuestion();
   };
 
@@ -617,6 +812,7 @@
     playsUsed=0;
     hintCount=0;
     growCount=0;
+    awarded.clear();
     stopAll();
     $('roundLabel').textContent=`Q${cur+1} / ${songs.length}`;
     $('qnum').textContent=`Q${cur+1}`;
@@ -732,6 +928,7 @@
     } else {
       cc.classList.add('hidden');
     }
+    renderChips();
     $('answerBox').classList.remove('hidden');
     const hl = s.highlight!=='' && !isNaN(parseFloat(s.highlight)) ? parseFloat(s.highlight) : 50;
 
@@ -782,6 +979,7 @@
 
   $('restartBtn').onclick=()=>{
     stopAll();
+    $('scoreboard').classList.add('hidden');
     end.classList.add('hidden'); setup.classList.remove('hidden');
     renderList();
   };
