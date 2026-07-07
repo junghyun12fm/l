@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>0.2초 케이팝 퀴즈</title>
+<style>
+  :root{
+    --bg:#0b0918;
+    --pink:#ff3e8a;
+    --violet:#6c5cff;
+    --cyan:#3ee6ff;
+    --gold:#ffd34d;
+    --text:#f5f2ff;
+    --dim:#9a92c4;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+    overflow-x:hidden;
+  }
+  .stage{
+    position:fixed;inset:0;pointer-events:none;z-index:0;
+    background:
+      radial-gradient(ellipse 60% 45% at 20% -10%, rgba(255,62,138,.18), transparent 60%),
+      radial-gradient(ellipse 55% 40% at 80% -10%, rgba(62,230,255,.15), transparent 60%),
+      radial-gradient(ellipse 70% 50% at 50% 115%, rgba(108,92,255,.20), transparent 65%);
+  }
+  .wrap{position:relative;z-index:1;max-width:900px;margin:0 auto;padding:32px 20px 60px;min-height:100%;}
+
+  .eyebrow{font-size:13px;letter-spacing:.35em;color:var(--cyan);text-transform:uppercase;margin-bottom:10px;font-weight:700;}
+  h1{font-size:clamp(26px,5vw,42px);font-weight:900;letter-spacing:-.02em;line-height:1.15;}
+  h1 .accent{background:linear-gradient(90deg,var(--pink),var(--violet),var(--cyan));-webkit-background-clip:text;background-clip:text;color:transparent;}
+  .sub{color:var(--dim);margin-top:8px;font-size:14.5px;line-height:1.5;}
+
+  .card{
+    background:rgba(255,255,255,.045);
+    border:1px solid rgba(255,255,255,.09);
+    border-radius:18px;padding:22px;margin-top:24px;
+    backdrop-filter:blur(6px);
+  }
+  .card h2{font-size:16px;font-weight:800;margin-bottom:14px;}
+
+  .song-row{
+    padding:14px;border-radius:12px;background:rgba(255,255,255,.04);
+    margin-bottom:12px;border:1px solid rgba(255,255,255,.06);
+  }
+  .row-line{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+  .row-line + .row-line{margin-top:8px;}
+  .song-row .num{
+    width:30px;height:30px;border-radius:50%;flex:none;
+    background:linear-gradient(135deg,var(--pink),var(--violet));
+    display:flex;align-items:center;justify-content:center;
+    font-weight:800;font-size:14px;
+  }
+  .song-row input[type=text],.song-row input[type=number]{
+    background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.12);
+    color:var(--text);border-radius:9px;padding:9px 12px;font-size:14.5px;
+    font-family:inherit;
+  }
+  .song-row input:focus{outline:2px solid var(--violet);outline-offset:1px;}
+  .in-title{flex:1;min-width:150px;}
+  .in-yt{flex:1;min-width:200px;}
+  .in-sec{width:110px;}
+  .mini-label{font-size:12px;color:var(--dim);flex:none;font-weight:700;}
+  .src-badge{font-size:11.5px;font-weight:800;padding:4px 10px;border-radius:999px;flex:none;}
+  .src-badge.file{background:rgba(62,230,255,.15);color:var(--cyan);border:1px solid rgba(62,230,255,.4);}
+  .src-badge.yt{background:rgba(255,62,138,.15);color:var(--pink);border:1px solid rgba(255,62,138,.4);}
+  .src-badge.none{background:rgba(255,255,255,.08);color:var(--dim);border:1px solid rgba(255,255,255,.15);}
+  .src-badge.loading{background:rgba(255,211,77,.15);color:var(--gold);border:1px solid rgba(255,211,77,.4);}
+
+  .btn{
+    border:none;cursor:pointer;font-weight:800;border-radius:12px;
+    font-size:14.5px;padding:12px 20px;color:var(--text);
+    background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.14);
+    transition:transform .1s;font-family:inherit;
+  }
+  .btn:hover{transform:translateY(-1px);}
+  .btn:focus-visible{outline:2px solid var(--cyan);outline-offset:2px;}
+  .btn.primary{background:linear-gradient(90deg,var(--pink),var(--violet));border:none;box-shadow:0 6px 24px rgba(255,62,138,.35);}
+  .btn.ghost{background:transparent;border:1px dashed rgba(255,255,255,.25);color:var(--dim);width:100%;}
+  .btn.small{padding:8px 13px;font-size:13px;border-radius:9px;}
+  .btn:disabled{opacity:.4;cursor:not-allowed;transform:none;box-shadow:none;}
+  .del{flex:none;background:none;border:none;color:var(--dim);cursor:pointer;font-size:17px;padding:4px 8px;border-radius:8px;}
+  .del:hover{color:var(--pink);background:rgba(255,62,138,.12);}
+
+  .settings{display:flex;gap:18px;flex-wrap:wrap;align-items:center;}
+  .seg{display:flex;background:rgba(0,0,0,.35);border-radius:11px;padding:4px;gap:4px;border:1px solid rgba(255,255,255,.1);}
+  .seg button{border:none;background:transparent;color:var(--dim);font-weight:700;padding:8px 14px;border-radius:8px;cursor:pointer;font-size:14px;font-family:inherit;}
+  .seg button.on{background:linear-gradient(90deg,var(--pink),var(--violet));color:#fff;}
+  .label{font-size:13px;color:var(--dim);font-weight:700;}
+  .start-bar{margin-top:22px;display:flex;justify-content:center;}
+  .start-bar .btn{font-size:17px;padding:16px 44px;}
+
+  .hidden{display:none!important;}
+  .game-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+  .round{font-size:14px;letter-spacing:.25em;color:var(--cyan);font-weight:800;}
+  .clip-len{font-size:13px;color:var(--dim);}
+  .arena{text-align:center;padding:34px 10px 30px;}
+  .qnum{
+    font-size:clamp(56px,13vw,100px);font-weight:900;line-height:1;
+    background:linear-gradient(90deg,var(--pink),var(--violet),var(--cyan));
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+    margin-bottom:24px;
+  }
+  .disc{
+    width:180px;height:180px;border-radius:50%;margin:0 auto 8px;
+    border:none;cursor:pointer;position:relative;
+    background:
+      radial-gradient(circle at 50% 50%, #1b1435 28%, transparent 29%),
+      conic-gradient(from 120deg, var(--pink), var(--violet), var(--cyan), var(--pink));
+    box-shadow:0 0 60px rgba(108,92,255,.45), inset 0 0 30px rgba(0,0,0,.5);
+    display:flex;align-items:center;justify-content:center;
+    transition:transform .12s;
+  }
+  .disc:hover{transform:scale(1.04);}
+  .disc:focus-visible{outline:3px solid var(--cyan);outline-offset:4px;}
+  .disc .icon{
+    width:0;height:0;border-top:24px solid transparent;border-bottom:24px solid transparent;
+    border-left:40px solid #fff;margin-left:10px;filter:drop-shadow(0 0 8px rgba(255,255,255,.6));
+  }
+  .disc.playing{animation:spin .6s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  @media (prefers-reduced-motion:reduce){.disc.playing{animation:none;}}
+  .disc-hint{color:var(--dim);font-size:14px;margin-top:10px;}
+
+  .flash{height:8px;border-radius:4px;max-width:340px;margin:24px auto 0;background:rgba(255,255,255,.08);overflow:hidden;position:relative;}
+  .flash i{position:absolute;inset:0;transform-origin:left;transform:scaleX(0);background:linear-gradient(90deg,var(--pink),var(--cyan));}
+  .flash i.go{transition:transform linear;transform:scaleX(1);}
+
+  .controls{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:28px;}
+  .replay-note{font-size:13px;color:var(--dim);margin-top:6px;}
+
+  .answer{
+    margin-top:28px;padding:24px;border-radius:16px;
+    background:rgba(255,211,77,.08);border:1px solid rgba(255,211,77,.35);
+  }
+  .answer .alabel{font-size:13px;letter-spacing:.3em;color:var(--gold);font-weight:800;margin-bottom:8px;}
+  .answer .title{font-size:clamp(24px,5.5vw,40px);font-weight:900;color:var(--gold);text-shadow:0 0 30px rgba(255,211,77,.4);margin-bottom:14px;}
+  .video-box{max-width:640px;margin:0 auto;border-radius:12px;overflow:hidden;background:#000;box-shadow:0 10px 40px rgba(0,0,0,.5);}
+  .video-box video{width:100%;display:block;}
+  .yt-ratio{position:relative;padding-bottom:56.25%;height:0;}
+  .yt-ratio iframe{position:absolute;inset:0;width:100%;height:100%;border:0;}
+
+  /* hidden YT player used for quiz-clip audio */
+  #ytQuizDock{position:fixed;left:-9999px;top:0;width:320px;height:180px;opacity:0.01;pointer-events:none;}
+
+  .end{text-align:center;padding:70px 10px;}
+  .end .big{font-size:clamp(40px,9vw,72px);font-weight:900;background:linear-gradient(90deg,var(--pink),var(--violet),var(--cyan));-webkit-background-clip:text;background-clip:text;color:transparent;margin-bottom:16px;}
+  .toast{
+    position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
+    background:rgba(0,0,0,.85);border:1px solid rgba(255,255,255,.2);
+    padding:12px 20px;border-radius:12px;font-size:14px;z-index:50;
+    opacity:0;transition:opacity .25s;pointer-events:none;max-width:90vw;text-align:center;
+  }
+  .toast.show{opacity:1;}
+  .kbd-help{margin-top:32px;text-align:center;color:var(--dim);font-size:12.5px;}
+  kbd{background:rgba(255,255,255,.1);border-radius:5px;padding:2px 7px;border:1px solid rgba(255,255,255,.15);font-family:inherit;}
+</style>
+</head>
+<body>
+<div class="stage"></div>
+<div class="wrap">
+
+  <!-- ========== SETUP ========== -->
+  <div id="setup">
+    <div class="eyebrow">K-POP, READ IN ENGLISH · FINAL QUIZ</div>
+    <h1><span class="accent">0.2초</span> 케이팝 인트로 퀴즈</h1>
+    <p class="sub">
+      곡마다 <b>mp3 파일(문제용)</b>과 <b>유튜브 MV 링크(정답 공개용)</b>를 넣어주세요.<br>
+      · 퀴즈 클립(0.2초)은 mp3에서 정밀하게 잘라 재생합니다.<br>
+      · 정답 공개 시 MV가 <b>후렴 시작(초)</b> 지점부터 재생됩니다. 후렴 시간을 꼭 입력해주세요!
+    </p>
+    <div class="card" id="envNote" style="display:none;border-color:rgba(255,211,77,.5);background:rgba(255,211,77,.07);">
+      <h2 style="color:var(--gold);">⚠ 파일로 직접 연 상태예요</h2>
+      <p class="sub" style="margin-top:0;">
+        유튜브 정책상 이 환경에서는 화면 안 임베드가 차단됩니다(오류 153).<br>
+        · 퀴즈 클립은 mp3에서 재생하므로 <b>문제 진행에는 영향 없음</b>.<br>
+        · 정답 공개 시 MV는 <b>새 탭</b>으로 후렴 지점부터 자동으로 열립니다.<br>
+        · 앱을 웹에 올려서(예: GitHub Pages) 열면 MV가 화면 안에서 바로 나옵니다.
+      </p>
+    </div>
+
+    <div class="card">
+      <h2>문제 목록</h2>
+      <div id="songList"></div>
+      <button class="btn ghost" id="addBtn">+ 문제 추가</button>
+      <input type="file" id="filePick" accept="audio/*,video/mp4,video/webm" title="mp3 권장" style="display:none">
+    </div>
+
+    <div class="card">
+      <h2>설정</h2>
+      <div class="settings">
+        <span class="label">클립 길이</span>
+        <div class="seg" id="lenSeg">
+          <button data-len="0.2" class="on">0.2초</button>
+          <button data-len="0.5">0.5초</button>
+          <button data-len="1">1초</button>
+          <button data-len="2">2초</button>
+        </div>
+        <span class="label">클립 구간</span>
+        <div class="seg" id="posSeg">
+          <button data-pos="random" class="on">랜덤 (곡 중간)</button>
+          <button data-pos="start">곡 시작부터</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="start-bar">
+      <button class="btn primary" id="startBtn" disabled>퀴즈 시작 ▶</button>
+    </div>
+  </div>
+
+  <!-- ========== GAME ========== -->
+  <div id="game" class="hidden">
+    <div class="game-top">
+      <div class="round" id="roundLabel">Q1 / 10</div>
+      <div class="clip-len" id="clipLabel">클립 0.2초</div>
+    </div>
+    <div class="arena">
+      <div class="qnum" id="qnum">Q1</div>
+      <button class="disc" id="playDisc" aria-label="클립 재생"><span class="icon"></span></button>
+      <div class="disc-hint" id="discHint"></div>
+      <div class="flash"><i id="flashBar"></i></div>
+
+      <div class="controls">
+        <button class="btn" id="replayBtn">🔁 한 번 더 (길이 2배)</button>
+        <button class="btn" id="revealBtn">✨ 정답 공개</button>
+        <button class="btn" id="nextBtn">다음 문제 →</button>
+      </div>
+      <div class="replay-note" id="replayNote"></div>
+
+      <div class="answer hidden" id="answerBox">
+        <div class="alabel">ANSWER</div>
+        <div class="title" id="answerTitle"></div>
+        <div class="video-box hidden" id="localVideoBox">
+          <video id="localVideo" playsinline controls></video>
+        </div>
+        <div class="video-box hidden" id="ytVideoBox">
+          <div class="yt-ratio"><div id="ytRevealMount"></div></div>
+        </div>
+        <a id="ytFallback" class="btn small hidden" target="_blank" rel="noopener" style="display:inline-block;margin-top:14px;text-decoration:none;">▶ 새 탭에서 MV 보기</a>
+        <div class="replay-note hidden" id="audioOnlyNote">원곡 3초 재생 중…</div>
+      </div>
+    </div>
+    <div class="kbd-help">
+      <kbd>Space</kbd> 재생 · <kbd>R</kbd> 한 번 더 · <kbd>Enter</kbd> 정답 · <kbd>→</kbd> 다음
+    </div>
+  </div>
+
+  <!-- ========== END ========== -->
+  <div id="end" class="hidden">
+    <div class="end">
+      <div class="big">퀴즈 끝! 🎉</div>
+      <p class="sub" style="margin-bottom:28px;">수고했어요. 다시 하려면 아래 버튼을 누르세요.</p>
+      <button class="btn primary" id="restartBtn">처음부터 다시</button>
+    </div>
+  </div>
+</div>
+
+<!-- offscreen YT player: quiz clips when only a YouTube link is given -->
+<div id="ytQuizDock"><div id="ytQuizMount"></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  const AC = window.AudioContext || window.webkitAudioContext;
+  let ctx = null;
+  const songs = []; // {title, file:{name,url,isVideo,buffer}, ytId, ytStart, offset}
+  let clipLen = 0.2, posMode = 'random', cur = 0, playsUsed = 0;
+  let currentSource = null, clipTimer = null;
+  let ytReady = false, ytQuiz = null, ytReveal = null, ytLoadTried = false;
+  // YouTube embeds require a referer header (enforced since late 2025).
+  // Opening this file directly from disk (file://) or in a sandboxed preview strips it → error 153.
+  const EMBED_OK = (location.protocol==='http:'||location.protocol==='https:') && window.origin!=='null';
+
+  const $ = id => document.getElementById(id);
+  const setup=$('setup'), game=$('game'), end=$('end');
+
+  function toast(msg){
+    const t=$('toast'); t.textContent=msg; t.classList.add('show');
+    clearTimeout(t._tm); t._tm=setTimeout(()=>t.classList.remove('show'),2800);
+  }
+
+  /* ---------- YouTube IFrame API (lazy load) ---------- */
+  function loadYT(){
+    if(ytLoadTried) return;
+    ytLoadTried = true;
+    window.onYouTubeIframeAPIReady = ()=>{ ytReady = true; };
+    const s=document.createElement('script');
+    s.src='https://www.youtube.com/iframe_api';
+    s.onerror=()=>toast('유튜브 API를 불러올 수 없어요. 인터넷/네트워크 차단을 확인하세요.');
+    document.head.appendChild(s);
+  }
+
+  function parseYT(url){
+    if(!url) return null;
+    const m = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?(?:.*&)?v=|shorts\/|embed\/))([\w-]{11})/);
+    if(!m) return null;
+    let start = 0;
+    const t = url.match(/[?&#]t=(\d+)/) || url.match(/[?&]start=(\d+)/);
+    if(t) start = parseInt(t[1],10);
+    return {id:m[1], start};
+  }
+
+  /* ---------- setup ---------- */
+  let pickTarget = null;
+
+  function addSong(){
+    songs.push({title:'', file:null, ytId:null, ytStart:0, ytUrl:'', highlight:''});
+    renderList();
+  }
+  $('addBtn').onclick = addSong;
+
+  $('filePick').onchange = async (e)=>{
+    const file = e.target.files[0];
+    e.target.value='';
+    if(!file || pickTarget==null) return;
+    const s = songs[pickTarget];
+    if(!ctx) ctx = new AC();
+    s.file = {name:file.name, url:URL.createObjectURL(file), isVideo:file.type.startsWith('video'), buffer:null, decoding:true};
+    renderList();
+    try{
+      const arr = await file.arrayBuffer();
+      s.file.buffer = await ctx.decodeAudioData(arr);
+    }catch(err){
+      toast('이 파일에서 오디오를 읽지 못했어요: '+file.name+' — 유튜브 링크를 대신 넣어주세요.');
+      s.file.buffer = null;
+    }
+    s.file.decoding = false;
+    renderList();
+  };
+
+  function srcBadge(s){
+    if(s.file){
+      if(s.file.decoding) return '<span class="src-badge loading">오디오 분석 중…</span>';
+      if(s.file.buffer) return `<span class="src-badge file">✓ 파일 (${s.file.isVideo?'영상':'오디오'})</span>`;
+      return '<span class="src-badge none">파일 오류</span>';
+    }
+    if(s.ytId) return '<span class="src-badge yt">▶ 유튜브</span>';
+    return '<span class="src-badge none">소스 없음</span>';
+  }
+
+  function renderList(){
+    const list=$('songList'); list.innerHTML='';
+    songs.forEach((s,i)=>{
+      const row=document.createElement('div'); row.className='song-row';
+      row.innerHTML=`
+        <div class="row-line">
+          <div class="num">${i+1}</div>
+          <input type="text" class="in-title" placeholder="곡 제목 (정답)" value="${(s.title||'').replace(/"/g,'&quot;')}">
+          ${srcBadge(s)}
+          <button class="del" aria-label="삭제">✕</button>
+        </div>
+        <div class="row-line">
+          <button class="btn small pick">${s.file? '🎵 mp3 바꾸기':'🎵 mp3 선택 (문제용)'}</button>
+          <input type="text" class="in-yt" placeholder="정답 공개용 MV 링크 (https://youtu.be/…)" value="${(s.ytUrl||'').replace(/"/g,'&quot;')}">
+          <span class="mini-label">후렴 시작(초)</span>
+          <input type="number" class="in-sec" min="0" placeholder="예: 58" value="${s.highlight}">
+        </div>`;
+      row.querySelector('.in-title').oninput = ev=>{ s.title=ev.target.value; updateStart(); };
+      row.querySelector('.pick').onclick = ()=>{ pickTarget=i; $('filePick').click(); };
+      row.querySelector('.in-yt').onchange = ev=>{
+        s.ytUrl = ev.target.value.trim();
+        const p = parseYT(s.ytUrl);
+        if(s.ytUrl && !p){ toast('유튜브 링크를 인식하지 못했어요.'); s.ytId=null; }
+        else if(p){ s.ytId=p.id; if(!s.highlight && p.start) s.highlight=p.start; if(EMBED_OK) loadYT(); }
+        else s.ytId=null;
+        renderList();
+      };
+      row.querySelector('.in-sec').oninput = ev=>{ s.highlight=ev.target.value; };
+      row.querySelector('.del').onclick = ()=>{ songs.splice(i,1); renderList(); };
+      list.appendChild(row);
+    });
+    updateStart();
+  }
+
+  function songReady(s){
+    return s.title.trim() && s.file && s.file.buffer && s.ytId;
+  }
+  function updateStart(){
+    $('startBtn').disabled = !(songs.length>0 && songs.every(songReady));
+  }
+
+  $('lenSeg').onclick = e=>{
+    const b=e.target.closest('button'); if(!b)return;
+    $('lenSeg').querySelectorAll('button').forEach(x=>x.classList.remove('on'));
+    b.classList.add('on'); clipLen=parseFloat(b.dataset.len);
+  };
+  $('posSeg').onclick = e=>{
+    const b=e.target.closest('button'); if(!b)return;
+    $('posSeg').querySelectorAll('button').forEach(x=>x.classList.remove('on'));
+    b.classList.add('on'); posMode=b.dataset.pos;
+  };
+
+  $('startBtn').onclick = ()=>{
+    const ytOnly = songs.some(s=>!(s.file&&s.file.buffer) && s.ytId);
+    if(ytOnly && EMBED_OK && !ytReady){
+      toast('유튜브 플레이어 준비 중이에요. 1~2초 뒤 다시 눌러주세요.');
+      loadYT();
+      return;
+    }
+    if(ytOnly && !EMBED_OK){
+      toast('유튜브만 넣은 곡은 이 환경에서 클립 재생이 안 돼요. 정답 MV는 새 탭으로 열립니다.');
+    }
+    songs.sort(()=>Math.random()-0.5);
+    songs.forEach(s=>{
+      if(posMode==='start'){ s.offset = 0; return; }
+      if(s.file && s.file.buffer){
+        const d=s.file.buffer.duration;
+        s.offset = d>10 ? d*0.2 + Math.random()*d*0.6 : Math.random()*Math.max(0,d-2);
+      } else {
+        // YouTube: duration unknown yet → pick 20~150s, clamp after load
+        s.offset = 20 + Math.random()*130;
+      }
+    });
+    if(ytOnly && EMBED_OK && !ytQuiz){
+      ytQuiz = new YT.Player('ytQuizMount', {
+        width:320,height:180,
+        playerVars:{controls:0,disablekb:1,rel:0,playsinline:1},
+        events:{onReady:(e)=>{ try{e.target.getIframe().referrerPolicy='strict-origin-when-cross-origin';}catch(_){}}}
+      });
+    }
+    cur=0;
+    setup.classList.add('hidden'); end.classList.add('hidden');
+    game.classList.remove('hidden');
+    loadQuestion();
+  };
+
+  /* ---------- game ---------- */
+  function curSong(){ return songs[cur]; }
+  function hasLocalAudio(s){ return s.file && s.file.buffer; }
+
+  function loadQuestion(){
+    playsUsed=0;
+    stopAll();
+    $('roundLabel').textContent=`Q${cur+1} / ${songs.length}`;
+    $('qnum').textContent=`Q${cur+1}`;
+    $('clipLabel').textContent=`클립 ${clipLen}초`;
+    $('discHint').textContent=`디스크를 누르면 ${clipLen}초 재생!`;
+    $('replayNote').textContent='';
+    $('answerBox').classList.add('hidden');
+    $('localVideoBox').classList.add('hidden');
+    $('ytVideoBox').classList.add('hidden');
+    $('ytFallback').classList.add('hidden');
+    $('audioOnlyNote').classList.add('hidden');
+    $('nextBtn').textContent = (cur===songs.length-1)?'결과 보기 🏁':'다음 문제 →';
+  }
+
+  function stopAll(){
+    if(currentSource){ try{currentSource.stop();}catch(e){} currentSource=null; }
+    clearTimeout(clipTimer);
+    if(ytQuiz && ytQuiz.pauseVideo){ try{ytQuiz.pauseVideo();}catch(e){} }
+    const yr=$('ytVideoBox').querySelector('.yt-ratio'); if(yr) yr.innerHTML='';
+    const v=$('localVideo'); v.pause(); v.removeAttribute('src'); v.load();
+    $('playDisc').classList.remove('playing');
+  }
+
+  function flashBar(dur){
+    const bar=$('flashBar');
+    bar.classList.remove('go'); bar.style.transitionDuration='0s'; bar.offsetHeight;
+    bar.style.transitionDuration=dur+'s'; bar.classList.add('go');
+    setTimeout(()=>{bar.classList.remove('go'); bar.style.transitionDuration='0s';}, dur*1000+180);
+  }
+
+  function playClip(dur){
+    const s=curSong();
+    const disc=$('playDisc');
+    if(hasLocalAudio(s)){
+      if(ctx.state==='suspended') ctx.resume();
+      if(currentSource){ try{currentSource.stop();}catch(e){} }
+      const src=ctx.createBufferSource();
+      src.buffer=s.file.buffer;
+      src.connect(ctx.destination);
+      const off=Math.min(s.offset, Math.max(0,s.file.buffer.duration-dur-0.05));
+      src.start(0, off, dur);
+      currentSource=src;
+      disc.classList.add('playing');
+      src.onended=()=>disc.classList.remove('playing');
+      flashBar(dur);
+    } else if(s.ytId && !EMBED_OK){
+      toast('파일로 직접 연 상태에서는 유튜브 클립 재생이 안 돼요. 이 곡은 mp3/mp4 파일을 넣어주세요.');
+    } else if(s.ytId && ytQuiz){
+      // YouTube quiz clip: seek + play + timed pause (approx. ±0.1s)
+      clearTimeout(clipTimer);
+      try{
+        const state = ytQuiz.getPlayerState ? ytQuiz.getPlayerState() : -99;
+        const loadedId = (ytQuiz.getVideoData && ytQuiz.getVideoData().video_id) || null;
+        const begin = ()=>{
+          disc.classList.add('playing'); flashBar(dur);
+          clipTimer=setTimeout(()=>{ ytQuiz.pauseVideo(); disc.classList.remove('playing'); }, dur*1000);
+        };
+        if(loadedId!==s.ytId){
+          ytQuiz.loadVideoById({videoId:s.ytId, startSeconds:s.offset});
+          const onState=(e)=>{
+            if(e.data===YT.PlayerState.PLAYING){
+              // clamp offset if beyond duration
+              const d=ytQuiz.getDuration();
+              if(d && s.offset>d-3){ s.offset=Math.max(0,d*0.4); ytQuiz.seekTo(s.offset,true); }
+              ytQuiz.removeEventListener('onStateChange', onState);
+              begin();
+            }
+          };
+          ytQuiz.addEventListener('onStateChange', onState);
+        } else {
+          ytQuiz.seekTo(s.offset,true);
+          ytQuiz.playVideo();
+          begin();
+        }
+      }catch(err){ toast('유튜브 재생에 실패했어요. 인터넷 연결을 확인하세요.'); }
+    }
+  }
+
+  $('playDisc').onclick=()=>{ playClip(clipLen); if(playsUsed===0) playsUsed=1; };
+
+  $('replayBtn').onclick=()=>{
+    playsUsed++;
+    const dur=Math.min(clipLen*Math.pow(2,playsUsed-1),4);
+    playClip(dur);
+    $('replayNote').textContent=`힌트 사용! 이번 클립 길이: ${dur.toFixed(1)}초`;
+  };
+
+  $('revealBtn').onclick=()=>{
+    const s=curSong();
+    stopAll();
+    $('answerTitle').textContent=s.title;
+    $('answerBox').classList.remove('hidden');
+    const hl = s.highlight!=='' && !isNaN(parseFloat(s.highlight)) ? parseFloat(s.highlight) : 50;
+
+    if(s.ytId){
+      const link = `https://www.youtube.com/watch?v=${s.ytId}&t=${Math.floor(hl)}s`;
+      $('ytFallback').classList.remove('hidden');
+      $('ytFallback').href = link;
+      if(EMBED_OK){
+        $('ytVideoBox').classList.remove('hidden');
+        const ratio=$('ytVideoBox').querySelector('.yt-ratio');
+        ratio.innerHTML='';
+        const f=document.createElement('iframe');
+        f.src=`https://www.youtube-nocookie.com/embed/${s.ytId}?start=${Math.floor(hl)}&autoplay=1&rel=0&playsinline=1`;
+        f.allow='autoplay; encrypted-media; fullscreen';
+        f.referrerPolicy='strict-origin-when-cross-origin';
+        f.allowFullscreen=true;
+        ratio.appendChild(f);
+      } else {
+        // embeds blocked (file:// or sandboxed preview) → open MV directly on YouTube
+        window.open(link,'_blank');
+      }
+    } else if(s.file && s.file.isVideo){
+      // fallback: local video reveal (no YouTube link)
+      const v=$('localVideo');
+      $('localVideoBox').classList.remove('hidden');
+      v.src=s.file.url;
+      v.currentTime=hl;
+      v.play().catch(()=>{});
+    } else if(hasLocalAudio(s)){
+      // audio-only reveal: play 3s
+      $('audioOnlyNote').classList.remove('hidden');
+      playClip(3);
+    }
+  };
+
+  $('nextBtn').onclick=()=>{
+    stopAll();
+    if(cur===songs.length-1){ game.classList.add('hidden'); end.classList.remove('hidden'); }
+    else { cur++; loadQuestion(); }
+  };
+
+  $('restartBtn').onclick=()=>{
+    stopAll();
+    end.classList.add('hidden'); setup.classList.remove('hidden');
+    renderList();
+  };
+
+  document.addEventListener('keydown',e=>{
+    if(game.classList.contains('hidden')) return;
+    if(e.target.tagName==='INPUT') return;
+    if(e.code==='Space'){ e.preventDefault(); $('playDisc').click(); }
+    else if(e.key==='r'||e.key==='R'){ $('replayBtn').click(); }
+    else if(e.key==='Enter'){ $('revealBtn').click(); }
+    else if(e.key==='ArrowRight'){ $('nextBtn').click(); }
+  });
+
+  addSong(); // start with one empty row
+  if(!EMBED_OK) $('envNote').style.display='block';
+})();
+</script>
+</body>
+</html>
