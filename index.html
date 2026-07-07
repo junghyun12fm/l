@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>0.2초 케이팝 퀴즈</title>
+<title>하남고 케이팝 인트로 퀴즈</title>
 <style>
   :root{
     --bg:#0b0918;
@@ -31,7 +31,7 @@
   }
   .wrap{position:relative;z-index:1;max-width:900px;margin:0 auto;padding:32px 20px 60px;min-height:100%;}
 
-  .eyebrow{font-size:13px;letter-spacing:.35em;color:var(--cyan);text-transform:uppercase;margin-bottom:10px;font-weight:700;}
+  .eyebrow{font-size:14px;letter-spacing:.12em;color:var(--cyan);margin-bottom:10px;font-weight:700;}
   h1{font-size:clamp(26px,5vw,42px);font-weight:900;letter-spacing:-.02em;line-height:1.15;}
   h1 .accent{background:linear-gradient(90deg,var(--pink),var(--violet),var(--cyan));-webkit-background-clip:text;background-clip:text;color:transparent;}
   .sub{color:var(--dim);margin-top:8px;font-size:14.5px;line-height:1.5;}
@@ -167,8 +167,8 @@
 
   <!-- ========== SETUP ========== -->
   <div id="setup">
-    <div class="eyebrow">K-POP, READ IN ENGLISH · FINAL QUIZ</div>
-    <h1><span class="accent">0.2초</span> 케이팝 인트로 퀴즈</h1>
+    <div class="eyebrow">하남고 "케이팝, 영어로 읽다"</div>
+    <h1><span class="accent">케이팝 인트로 퀴즈</span></h1>
     <p class="sub">
       곡마다 <b>mp3 파일(문제용)</b>과 <b>유튜브 MV 링크(정답 공개용)</b>를 넣어주세요.<br>
       · 퀴즈 클립(0.2초)은 mp3에서 정밀하게 잘라 재생합니다.<br>
@@ -597,7 +597,7 @@
         const ratio=$('ytVideoBox').querySelector('.yt-ratio');
         ratio.innerHTML='';
         const f=document.createElement('iframe');
-        f.src=`https://www.youtube-nocookie.com/embed/${s.ytId}?start=${Math.floor(hl)}&autoplay=1&rel=0&playsinline=1`;
+        f.src=`https://www.youtube.com/embed/${s.ytId}?start=${Math.floor(hl)}&autoplay=1&rel=0&playsinline=1`;
         f.allow='autoplay; encrypted-media; fullscreen';
         f.referrerPolicy='strict-origin-when-cross-origin';
         f.allowFullscreen=true;
