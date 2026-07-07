@@ -137,22 +137,25 @@
   /* answer reveal: full-screen slide overlay */
   .answer{
     position:fixed;inset:0;z-index:40;
-    display:flex;flex-direction:column;align-items:center;justify-content:center;
-    text-align:center;gap:6px;padding:3vh 3vw;
+    display:flex;flex-direction:column;align-items:center;
+    justify-content:center;justify-content:safe center;
+    overflow:auto;
+    text-align:center;gap:6px;padding:2vh 3vw;
     background:
       radial-gradient(ellipse 70% 50% at 50% -10%, rgba(255,211,77,.10), transparent 60%),
       rgba(6,4,16,.97);
   }
-  .answer .alabel{font-size:14px;letter-spacing:.3em;color:var(--gold);font-weight:800;margin-bottom:4px;}
-  .answer .title-clip{overflow:hidden;margin-bottom:12px;}
-  .answer .title{font-size:clamp(30px,5.5vw,58px);font-weight:900;color:var(--gold);text-shadow:0 0 40px rgba(255,211,77,.45);line-height:1.15;}
+  .answer .alabel{font-size:14px;letter-spacing:.3em;color:var(--gold);font-weight:800;margin-bottom:4px;flex:none;}
+  .answer .title-clip{overflow:hidden;margin-bottom:10px;flex:none;}
+  .answer .title{font-size:clamp(26px,4.5vw,48px);font-weight:900;color:var(--gold);text-shadow:0 0 40px rgba(255,211,77,.45);line-height:1.15;}
   .answer .title.rise{animation:riseUp .65s cubic-bezier(.2,.85,.25,1) both;}
   @keyframes riseUp{from{transform:translateY(110%);opacity:0;}to{transform:translateY(0);opacity:1;}}
   @media (prefers-reduced-motion:reduce){.answer .title.rise{animation:none;}}
-  .overlay-controls{display:flex;gap:12px;margin-top:18px;flex-wrap:wrap;justify-content:center;}
-  /* video sized to fill the slide: limited by both width and viewport height (16:9) */
+  .overlay-controls{display:flex;gap:12px;margin-top:14px;flex-wrap:wrap;justify-content:center;flex:none;}
+  /* video sized to fill the slide: limited by both width and remaining viewport height (16:9) */
   .video-box{
-    width:min(94vw, calc((100vh - 230px) * 1.7778));
+    width:min(94vw, calc((100vh - 300px) * 1.7778));
+    flex:none;
     margin:0 auto;border-radius:12px;overflow:hidden;background:#000;
     box-shadow:0 14px 60px rgba(0,0,0,.6);
   }
