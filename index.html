@@ -180,6 +180,40 @@
 
   .end{text-align:center;padding:70px 10px;}
 
+  /* drumroll */
+  .drumroll{
+    font-size:clamp(38px,8vw,76px);font-weight:900;padding:60px 0;
+    background:linear-gradient(90deg,var(--pink),var(--violet),var(--cyan));
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+    animation:drumShake .14s linear infinite;
+  }
+  @keyframes drumShake{
+    0%{transform:translateX(-5px) rotate(-.6deg);}
+    50%{transform:translateX(5px) rotate(.6deg);}
+    100%{transform:translateX(-5px) rotate(-.6deg);}
+  }
+  @media (prefers-reduced-motion:reduce){.drumroll{animation:none;}}
+
+  /* podium */
+  .podium{display:flex;align-items:flex-end;justify-content:center;gap:16px;margin:20px auto 0;}
+  .pod{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;opacity:0;}
+  .pod.show{animation:podIn .55s cubic-bezier(.2,.85,.3,1.2) both;}
+  @keyframes podIn{from{opacity:0;transform:translateY(70px);}to{opacity:1;transform:translateY(0);}}
+  @media (prefers-reduced-motion:reduce){.pod.show{animation:none;opacity:1;}}
+  .pod-names{font-weight:900;margin-bottom:12px;font-size:clamp(17px,2.8vw,28px);line-height:1.35;}
+  .pod-names .pts-small{color:var(--gold);font-size:.75em;font-weight:800;}
+  .pod-block{
+    width:clamp(105px,17vw,190px);border-radius:14px 14px 0 0;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+    box-shadow:0 -6px 30px rgba(0,0,0,.35), inset 0 2px 0 rgba(255,255,255,.35);
+  }
+  .pod-block .medal{font-size:38px;}
+  .pod-block .rank{font-size:30px;font-weight:900;color:rgba(0,0,0,.55);}
+  .b1{height:230px;background:linear-gradient(180deg,#ffd34d,#b8912a);}
+  .b2{height:165px;background:linear-gradient(180deg,#d7dde9,#7d8496);}
+  .b3{height:125px;background:linear-gradient(180deg,#e59a5e,#8a5024);}
+  .pod.hidden{display:none;}
+
   /* live scoreboard (top-left, above everything) */
   .scoreboard{
     position:fixed;top:14px;left:14px;z-index:45;
@@ -403,9 +437,26 @@
   <!-- ========== END ========== -->
   <div id="end" class="hidden">
     <div class="end">
-      <div class="big">퀴즈 끝! 🎉</div>
-      <p class="sub" style="margin-bottom:28px;">수고했어요. 다시 하려면 아래 버튼을 누르세요.</p>
-      <button class="btn primary" id="restartBtn">처음부터 다시</button>
+      <div class="drumroll hidden" id="drumroll">🥁 두구두구두구…</div>
+      <div class="podium hidden" id="podium">
+        <div class="pod" id="pod2">
+          <div class="pod-names" id="podN2"></div>
+          <div class="pod-block b2"><span class="medal">🥈</span><span class="rank">2</span></div>
+        </div>
+        <div class="pod" id="pod1">
+          <div class="pod-names" id="podN1"></div>
+          <div class="pod-block b1"><span class="medal">🥇</span><span class="rank">1</span></div>
+        </div>
+        <div class="pod" id="pod3">
+          <div class="pod-names" id="podN3"></div>
+          <div class="pod-block b3"><span class="medal">🥉</span><span class="rank">3</span></div>
+        </div>
+      </div>
+      <div id="endPlain">
+        <div class="big">퀴즈 끝! 🎉</div>
+        <p class="sub" style="margin-bottom:28px;">수고했어요. 다시 하려면 아래 버튼을 누르세요.</p>
+      </div>
+      <button class="btn primary" id="restartBtn" style="margin-top:30px;">처음부터 다시</button>
     </div>
   </div>
 </div>
@@ -462,6 +513,71 @@
     $('scoreRows').innerHTML=scored.map(st=>
       `<div class="score-row${st.score===topScore?' top1':''}"><span>${esc(st.name)}</span><span class="pts">${st.score}</span></div>`
     ).join('');
+  }
+
+  /* ---------- awards ceremony ---------- */
+  function playDrumroll(dur){
+    if(!ctx) return;
+    if(ctx.state==='suspended') ctx.resume();
+    const now=ctx.currentTime;
+    let t=0, gap=0.11;
+    while(t<dur){
+      const len=0.03;
+      const buf=ctx.createBuffer(1, ctx.sampleRate*len, ctx.sampleRate);
+      const ch=buf.getChannelData(0);
+      for(let i=0;i<ch.length;i++) ch[i]=(Math.random()*2-1)*(1-i/ch.length);
+      const src=ctx.createBufferSource(); src.buffer=buf;
+      const g=ctx.createGain(); g.gain.value=0.35;
+      src.connect(g); g.connect(ctx.destination);
+      src.start(now+t);
+      t+=gap; gap=Math.max(0.045, gap*0.97); // 점점 빨라지는 드럼롤
+    }
+  }
+  function playTada(){
+    if(!ctx) return;
+    const now=ctx.currentTime;
+    [523.25,659.25,783.99,1046.5].forEach((f,i)=>{ // C-E-G-C 팡파레
+      const o=ctx.createOscillator(), g=ctx.createGain();
+      o.type='triangle'; o.frequency.value=f;
+      g.gain.setValueAtTime(0.0001, now+i*0.06);
+      g.gain.exponentialRampToValueAtTime(0.25, now+i*0.06+0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, now+i*0.06+0.9);
+      o.connect(g); g.connect(ctx.destination);
+      o.start(now+i*0.06); o.stop(now+i*0.06+1);
+    });
+  }
+  function buildPodium(){
+    const sorted=[...students].filter(s=>s.score>0).sort((a,b)=>b.score-a.score);
+    const tiers=[...new Set(sorted.map(s=>s.score))].slice(0,3); // 동점자는 같은 순위
+    const slots=[$('podN1'),$('podN2'),$('podN3')];
+    const pods=[$('pod1'),$('pod2'),$('pod3')];
+    pods.forEach((p,i)=>{
+      p.classList.remove('show');
+      if(i<tiers.length){
+        p.classList.remove('hidden');
+        const winners=sorted.filter(s=>s.score===tiers[i]);
+        slots[i].innerHTML=winners.map(w=>esc(w.name)).join('<br>')+`<br><span class="pts-small">${tiers[i]}점</span>`;
+      } else p.classList.add('hidden');
+    });
+  }
+  function startCeremony(){
+    const dr=$('drumroll'), pod=$('podium'), plain=$('endPlain');
+    const anyScore=students.some(s=>s.score>0);
+    if(!anyScore){ // 점수 기능 미사용 또는 무득점: 기본 마무리 화면
+      dr.classList.add('hidden'); pod.classList.add('hidden'); plain.classList.remove('hidden');
+      return;
+    }
+    plain.classList.add('hidden'); pod.classList.add('hidden');
+    dr.classList.remove('hidden');
+    playDrumroll(2.6);
+    setTimeout(()=>{
+      dr.classList.add('hidden');
+      buildPodium();
+      pod.classList.remove('hidden');
+      const order=[$('pod3'),$('pod2'),$('pod1')].filter(p=>!p.classList.contains('hidden'));
+      order.forEach((p,i)=>setTimeout(()=>p.classList.add('show'), 200+i*750));
+      setTimeout(playTada, 200+(order.length-1)*750+150);
+    }, 2800);
   }
 
   function renderChips(){
@@ -967,7 +1083,10 @@
   $('nextBtn').onclick=()=>{
     stopAll();
     $('answerBox').classList.add('hidden');
-    if(cur===songs.length-1){ game.classList.add('hidden'); end.classList.remove('hidden'); }
+    if(cur===songs.length-1){
+      game.classList.add('hidden'); end.classList.remove('hidden');
+      startCeremony();
+    }
     else { cur++; loadQuestion(); }
   };
 
