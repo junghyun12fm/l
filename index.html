@@ -188,6 +188,7 @@
       <h2>문제 목록</h2>
       <div id="songList"></div>
       <button class="btn ghost" id="addBtn">+ 문제 추가</button>
+      <button class="btn small" id="clearBtn" style="margin-top:10px;color:var(--dim);">🗑 저장된 목록 비우기</button>
       <input type="file" id="filePick" accept="audio/*,video/mp4,video/webm" title="mp3 권장" style="display:none">
     </div>
 
@@ -280,9 +281,64 @@
   const $ = id => document.getElementById(id);
   const setup=$('setup'), game=$('game'), end=$('end');
 
+  /* persistence: handled by the auto-save system below (IndexedDB 'kv' store) */
+
   function toast(msg){
     const t=$('toast'); t.textContent=msg; t.classList.add('show');
     clearTimeout(t._tm); t._tm=setTimeout(()=>t.classList.remove('show'),2800);
+  }
+
+  /* ---------- auto-save (IndexedDB: this browser on this computer only) ---------- */
+  let db=null, saveTm=null;
+  function openDB(){ return new Promise(res=>{ try{
+      const rq=indexedDB.open('kpopQuizDB',1);
+      rq.onupgradeneeded=()=>rq.result.createObjectStore('kv');
+      rq.onsuccess=()=>res(rq.result);
+      rq.onerror=()=>res(null);
+    }catch(e){res(null);} });}
+  function scheduleSave(){ clearTimeout(saveTm); saveTm=setTimeout(saveState,500); }
+  function saveState(){
+    if(!db) return;
+    const data=songs.map(s=>({title:s.title||'', ytUrl:s.ytUrl||'', highlight:s.highlight||'',
+      fileName:s.file?s.file.name:null,
+      fileType:s.file?(s.file.isVideo?'video':'audio'):null,
+      blob:(s.file&&s.file.blob)?s.file.blob:null}));
+    try{ db.transaction('kv','readwrite').objectStore('kv').put(data,'songs'); }catch(e){}
+  }
+  async function loadState(){
+    db=await openDB(); if(!db) return;
+    const data=await new Promise(res=>{ try{
+      const rq=db.transaction('kv').objectStore('kv').get('songs');
+      rq.onsuccess=()=>res(rq.result); rq.onerror=()=>res(null);
+    }catch(e){res(null);} });
+    if(!data || !data.length) return;
+    if(!ctx) ctx=new AC();
+    songs.length=0;
+    for(const d of data){
+      const s={title:d.title||'', ytUrl:d.ytUrl||'', ytId:null, highlight:d.highlight||'', file:null};
+      const p=parseYT(s.ytUrl); if(p){ s.ytId=p.id; if(EMBED_OK) loadYT(); }
+      if(d.blob){
+        s.file={name:d.fileName||'저장된 파일', url:URL.createObjectURL(d.blob),
+          isVideo:d.fileType==='video', buffer:null, decoding:true, blob:d.blob};
+      }
+      songs.push(s);
+    }
+    renderList();
+    toast('저장된 퀴즈 목록을 불러왔어요!');
+    for(const s of songs){
+      if(s.file&&s.file.blob){
+        try{ s.file.buffer=await ctx.decodeAudioData(await s.file.blob.arrayBuffer()); }
+        catch(e){ s.file=null; }
+        if(s.file) s.file.decoding=false;
+      }
+    }
+    renderList();
+  }
+  async function clearSaved(){
+    if(!confirm('저장된 퀴즈 목록을 모두 지울까요?')) return;
+    try{ db && db.transaction('kv','readwrite').objectStore('kv').delete('songs'); }catch(e){}
+    songs.length=0; addSong();
+    toast('저장된 목록을 지웠어요.');
   }
 
   /* ---------- YouTube IFrame API (lazy load) ---------- */
@@ -321,17 +377,18 @@
     if(!file || pickTarget==null) return;
     const s = songs[pickTarget];
     if(!ctx) ctx = new AC();
-    s.file = {name:file.name, url:URL.createObjectURL(file), isVideo:file.type.startsWith('video'), buffer:null, decoding:true};
+    s.file = {name:file.name, url:URL.createObjectURL(file), isVideo:file.type.startsWith('video'), buffer:null, decoding:true, blob:file};
     renderList();
     try{
       const arr = await file.arrayBuffer();
       s.file.buffer = await ctx.decodeAudioData(arr);
     }catch(err){
-      toast('이 파일에서 오디오를 읽지 못했어요: '+file.name+' — 유튜브 링크를 대신 넣어주세요.');
+      toast('이 파일에서 오디오를 읽지 못했어요: '+file.name+' — 다른 파일을 넣어주세요.');
       s.file.buffer = null;
     }
     s.file.decoding = false;
     renderList();
+    scheduleSave();
   };
 
   function srcBadge(s){
@@ -361,7 +418,7 @@
           <span class="mini-label">후렴 시작(초)</span>
           <input type="number" class="in-sec" min="0" placeholder="예: 58" value="${s.highlight}">
         </div>`;
-      row.querySelector('.in-title').oninput = ev=>{ s.title=ev.target.value; updateStart(); };
+      row.querySelector('.in-title').oninput = ev=>{ s.title=ev.target.value; updateStart(); scheduleSave(); };
       row.querySelector('.pick').onclick = ()=>{ pickTarget=i; $('filePick').click(); };
       row.querySelector('.in-yt').onchange = ev=>{
         s.ytUrl = ev.target.value.trim();
@@ -370,9 +427,10 @@
         else if(p){ s.ytId=p.id; if(!s.highlight && p.start) s.highlight=p.start; if(EMBED_OK) loadYT(); }
         else s.ytId=null;
         renderList();
+        scheduleSave();
       };
-      row.querySelector('.in-sec').oninput = ev=>{ s.highlight=ev.target.value; };
-      row.querySelector('.del').onclick = ()=>{ songs.splice(i,1); renderList(); };
+      row.querySelector('.in-sec').oninput = ev=>{ s.highlight=ev.target.value; scheduleSave(); };
+      row.querySelector('.del').onclick = ()=>{ songs.splice(i,1); renderList(); scheduleSave(); };
       list.appendChild(row);
     });
     updateStart();
@@ -583,8 +641,13 @@
     else if(e.key==='ArrowRight'){ $('nextBtn').click(); }
   });
 
-  addSong(); // start with one empty row
-  if(!EMBED_OK) $('envNote').style.display='block';
+  $('clearBtn').onclick = ()=>clearSaved();
+
+  (async ()=>{
+    if(!EMBED_OK) $('envNote').style.display='block';
+    await loadState();               // restore saved quiz list (this browser only)
+    if(!songs.length) addSong();     // otherwise start with one empty row
+  })();
 })();
 </script>
 </body>
