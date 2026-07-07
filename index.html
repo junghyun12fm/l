@@ -147,14 +147,21 @@
   }
   .answer .alabel{font-size:14px;letter-spacing:.3em;color:var(--gold);font-weight:800;margin-bottom:4px;flex:none;}
   .answer .title-clip{overflow:hidden;margin-bottom:10px;flex:none;}
+  .answer .title-row{display:flex;align-items:center;justify-content:center;gap:20px;}
+  .answer .title-row.rise{animation:riseUp .65s cubic-bezier(.2,.85,.25,1) both;}
+  .answer .answer-art{
+    width:clamp(64px,9vw,110px);height:clamp(64px,9vw,110px);
+    border-radius:14px;object-fit:cover;flex:none;
+    box-shadow:0 8px 30px rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.15);
+  }
   .answer .title{font-size:clamp(26px,4.5vw,48px);font-weight:900;color:var(--gold);text-shadow:0 0 40px rgba(255,211,77,.45);line-height:1.15;}
-  .answer .title.rise{animation:riseUp .65s cubic-bezier(.2,.85,.25,1) both;}
+  .art-thumb{width:42px;height:42px;border-radius:8px;object-fit:cover;flex:none;border:1px solid rgba(255,255,255,.18);background:rgba(0,0,0,.3);}
   @keyframes riseUp{from{transform:translateY(110%);opacity:0;}to{transform:translateY(0);opacity:1;}}
-  @media (prefers-reduced-motion:reduce){.answer .title.rise{animation:none;}}
+  @media (prefers-reduced-motion:reduce){.answer .title-row.rise{animation:none;}}
   .overlay-controls{display:flex;gap:12px;margin-top:14px;flex-wrap:wrap;justify-content:center;flex:none;}
   /* video sized to fill the slide: limited by both width and remaining viewport height (16:9) */
   .video-box{
-    width:min(94vw, calc((100vh - 300px) * 1.7778));
+    width:min(94vw, calc((100vh - 350px) * 1.7778));
     flex:none;
     margin:0 auto;border-radius:12px;overflow:hidden;background:#000;
     box-shadow:0 14px 60px rgba(0,0,0,.6);
@@ -167,6 +174,22 @@
   #ytQuizDock{position:fixed;left:-9999px;top:0;width:320px;height:180px;opacity:0.01;pointer-events:none;}
 
   .end{text-align:center;padding:70px 10px;}
+
+  /* intro screen */
+  .intro{
+    min-height:82vh;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;text-align:center;gap:10px;
+  }
+  .intro .intro-eyebrow{font-size:16px;letter-spacing:.12em;color:var(--cyan);font-weight:700;}
+  .intro .title-clip{overflow:hidden;padding:0 10px;}
+  .intro .intro-title{
+    font-size:clamp(48px,9vw,104px);font-weight:900;letter-spacing:-.02em;line-height:1.15;
+    background:linear-gradient(90deg,var(--pink),var(--violet),var(--cyan));
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+  .intro .intro-title.rise{animation:riseUp .8s cubic-bezier(.2,.85,.25,1) both;}
+  @media (prefers-reduced-motion:reduce){.intro .intro-title.rise{animation:none;}}
+  .intro .btn{margin-top:36px;font-size:19px;padding:18px 56px;}
   .end .big{font-size:clamp(40px,9vw,72px);font-weight:900;background:linear-gradient(90deg,var(--pink),var(--violet),var(--cyan));-webkit-background-clip:text;background-clip:text;color:transparent;margin-bottom:16px;}
   .toast{
     position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
@@ -208,6 +231,7 @@
       <button class="btn ghost" id="addBtn">+ 문제 추가</button>
       <button class="btn small" id="clearBtn" style="margin-top:10px;color:var(--dim);">🗑 저장된 목록 비우기</button>
       <input type="file" id="filePick" accept="audio/*,video/mp4,video/webm" title="mp3 권장" style="display:none">
+      <input type="file" id="artPick" accept="image/*" style="display:none">
     </div>
 
     <div class="card">
@@ -230,6 +254,15 @@
 
     <div class="start-bar">
       <button class="btn primary" id="startBtn" disabled>퀴즈 시작 ▶</button>
+    </div>
+  </div>
+
+  <!-- ========== INTRO ========== -->
+  <div id="intro" class="hidden">
+    <div class="intro">
+      <div class="intro-eyebrow">하남고 "케이팝, 영어로 읽다"</div>
+      <div class="title-clip"><div class="intro-title" id="introTitle">케이팝 인트로 퀴즈</div></div>
+      <button class="btn primary" id="introStartBtn">퀴즈 시작 ▶</button>
     </div>
   </div>
 
@@ -260,7 +293,12 @@
   <!-- answer reveal slide (full-screen overlay) -->
   <div class="answer hidden" id="answerBox">
     <div class="alabel">ANSWER</div>
-    <div class="title-clip"><div class="title" id="answerTitle"></div></div>
+    <div class="title-clip">
+      <div class="title-row" id="titleRow">
+        <img id="answerArt" class="answer-art hidden" alt="앨범아트">
+        <div class="title" id="answerTitle"></div>
+      </div>
+    </div>
     <div class="video-box hidden" id="localVideoBox">
       <video id="localVideo" playsinline controls></video>
     </div>
@@ -302,7 +340,7 @@
   const EMBED_OK = (location.protocol==='http:'||location.protocol==='https:') && window.origin!=='null';
 
   const $ = id => document.getElementById(id);
-  const setup=$('setup'), game=$('game'), end=$('end');
+  const setup=$('setup'), game=$('game'), end=$('end'), intro=$('intro');
 
   /* persistence: handled by the auto-save system below (IndexedDB 'kv' store) */
 
@@ -325,7 +363,8 @@
     const data=songs.map(s=>({title:s.title||'', ytUrl:s.ytUrl||'', highlight:s.highlight||'',
       fileName:s.file?s.file.name:null,
       fileType:s.file?(s.file.isVideo?'video':'audio'):null,
-      blob:(s.file&&s.file.blob)?s.file.blob:null}));
+      blob:(s.file&&s.file.blob)?s.file.blob:null,
+      artUrl:s.artUrl||null, artBlob:s.artBlob||null}));
     try{ db.transaction('kv','readwrite').objectStore('kv').put(data,'songs'); }catch(e){}
   }
   async function loadState(){
@@ -338,7 +377,9 @@
     if(!ctx) ctx=new AC();
     songs.length=0;
     for(const d of data){
-      const s={title:d.title||'', ytUrl:d.ytUrl||'', ytId:null, highlight:d.highlight||'', file:null};
+      const s={title:d.title||'', ytUrl:d.ytUrl||'', ytId:null, highlight:d.highlight||'', file:null,
+        artUrl:d.artUrl||null, artBlob:d.artBlob||null,
+        artLocalUrl:d.artBlob?URL.createObjectURL(d.artBlob):null};
       const p=parseYT(s.ytUrl); if(p){ s.ytId=p.id; if(EMBED_OK) loadYT(); }
       if(d.blob){
         s.file={name:d.fileName||'저장된 파일', url:URL.createObjectURL(d.blob),
@@ -364,6 +405,21 @@
     toast('저장된 목록을 지웠어요.');
   }
 
+  /* ---------- album art: auto search (iTunes) + manual upload override ---------- */
+  async function fetchArt(s){
+    if(!s.title.trim() || s.artBlob) return; // 직접 업로드가 있으면 유지
+    try{
+      const term = s.title.replace(/['"!?()\[\]]/g,' ').trim();
+      const r = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(term)}&entity=song&limit=1&country=KR`);
+      const d = await r.json();
+      const hit = d.results && d.results[0];
+      if(hit && hit.artworkUrl100){
+        s.artUrl = hit.artworkUrl100.replace('100x100','600x600');
+        renderList(); scheduleSave();
+      }
+    }catch(e){ /* 오프라인 등: 조용히 넘어감 */ }
+  }
+
   /* ---------- YouTube IFrame API (lazy load) ---------- */
   function loadYT(){
     if(ytLoadTried) return;
@@ -386,7 +442,18 @@
   }
 
   /* ---------- setup ---------- */
-  let pickTarget = null;
+  let pickTarget = null, pickArtTarget = null;
+
+  $('artPick').onchange = (e)=>{
+    const file = e.target.files[0];
+    e.target.value='';
+    if(!file || pickArtTarget==null) return;
+    const s = songs[pickArtTarget];
+    s.artBlob = file;
+    s.artLocalUrl = URL.createObjectURL(file);
+    renderList();
+    scheduleSave();
+  };
 
   function addSong(){
     songs.push({title:'', file:null, ytId:null, ytStart:0, ytUrl:'', highlight:''});
@@ -428,6 +495,7 @@
     const list=$('songList'); list.innerHTML='';
     songs.forEach((s,i)=>{
       const row=document.createElement('div'); row.className='song-row';
+      const artSrc = s.artLocalUrl || s.artUrl || '';
       row.innerHTML=`
         <div class="row-line">
           <div class="num">${i+1}</div>
@@ -436,12 +504,16 @@
           <button class="del" aria-label="삭제">✕</button>
         </div>
         <div class="row-line">
+          <img class="art-thumb" src="${artSrc}" alt="앨범아트" style="${artSrc?'':'display:none;'}">
+          <button class="btn small art-pick" title="앨범아트 직접 업로드">🖼 ${artSrc?'아트 교체':'아트 업로드'}</button>
           <button class="btn small pick">${s.file? '🎵 mp3 바꾸기':'🎵 mp3 선택 (문제용)'}</button>
           <input type="text" class="in-yt" placeholder="정답 공개용 MV 링크 (https://youtu.be/…)" value="${(s.ytUrl||'').replace(/"/g,'&quot;')}">
           <span class="mini-label">후렴 시작(초)</span>
           <input type="number" class="in-sec" min="0" placeholder="예: 58" value="${s.highlight}">
         </div>`;
       row.querySelector('.in-title').oninput = ev=>{ s.title=ev.target.value; updateStart(); scheduleSave(); };
+      row.querySelector('.in-title').onchange = ()=>fetchArt(s); // 입력 마치면 앨범아트 자동 검색
+      row.querySelector('.art-pick').onclick = ()=>{ pickArtTarget=i; $('artPick').click(); };
       row.querySelector('.pick').onclick = ()=>{ pickTarget=i; $('filePick').click(); };
       row.querySelector('.in-yt').onchange = ev=>{
         s.ytUrl = ev.target.value.trim();
@@ -510,7 +582,14 @@
       });
     }
     cur=0;
-    setup.classList.add('hidden'); end.classList.add('hidden');
+    setup.classList.add('hidden'); end.classList.add('hidden'); game.classList.add('hidden');
+    intro.classList.remove('hidden');
+    const it=$('introTitle');
+    it.classList.remove('rise'); void it.offsetWidth; it.classList.add('rise');
+  };
+
+  $('introStartBtn').onclick=()=>{
+    intro.classList.add('hidden');
     game.classList.remove('hidden');
     loadQuestion();
   };
@@ -613,7 +692,12 @@
     stopAll();
     const at=$('answerTitle');
     at.textContent=s.title;
-    at.classList.remove('rise'); void at.offsetWidth; at.classList.add('rise');
+    const art=$('answerArt');
+    const artSrc = s.artLocalUrl || s.artUrl || '';
+    if(artSrc){ art.src=artSrc; art.classList.remove('hidden'); }
+    else art.classList.add('hidden');
+    const tr=$('titleRow');
+    tr.classList.remove('rise'); void tr.offsetWidth; tr.classList.add('rise');
     $('answerBox').classList.remove('hidden');
     const hl = s.highlight!=='' && !isNaN(parseFloat(s.highlight)) ? parseFloat(s.highlight) : 50;
 
@@ -669,6 +753,10 @@
   };
 
   document.addEventListener('keydown',e=>{
+    if(!intro.classList.contains('hidden')){
+      if(e.key==='Enter'||e.code==='Space'){ e.preventDefault(); $('introStartBtn').click(); }
+      return;
+    }
     if(game.classList.contains('hidden')) return;
     if(e.target.tagName==='INPUT') return;
     const overlayOpen = !$('answerBox').classList.contains('hidden');
