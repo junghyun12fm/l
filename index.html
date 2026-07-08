@@ -240,7 +240,35 @@
     background:linear-gradient(90deg,var(--pink),var(--violet));
     border-color:transparent;box-shadow:0 4px 18px rgba(255,62,138,.45);
   }
-  .chip.awarded::after{content:' +1';color:var(--gold);}
+  .chip.awarded::after{content:' +' attr(data-pts);color:var(--gold);}
+
+  /* double-points event */
+  .btn.double{border:1px solid rgba(255,211,77,.55);color:var(--gold);}
+  .btn.double.active{
+    background:linear-gradient(90deg,#b8912a,var(--gold));color:#231a02;border:none;
+    box-shadow:0 6px 24px rgba(255,211,77,.4);
+  }
+  .double-badge{
+    font-size:13px;font-weight:800;color:var(--gold);
+    border:1px solid rgba(255,211,77,.55);border-radius:999px;padding:5px 14px;
+    animation:badgePulse 1.2s ease-in-out infinite;
+  }
+  @keyframes badgePulse{0%,100%{opacity:1;}50%{opacity:.55;}}
+  .double-banner{
+    position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;
+    background:rgba(11,9,24,.55);backdrop-filter:blur(3px);
+    opacity:0;pointer-events:none;transition:opacity .3s;
+  }
+  .double-banner.show{opacity:1;}
+  .double-banner .db-text{
+    font-size:clamp(40px,9vw,92px);font-weight:900;text-align:center;padding:0 20px;
+    background:linear-gradient(90deg,var(--gold),var(--pink),var(--gold));
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+    filter:drop-shadow(0 0 40px rgba(255,211,77,.5));
+  }
+  .double-banner.show .db-text{animation:dbPop .5s cubic-bezier(.2,.9,.3,1.35) both;}
+  @keyframes dbPop{from{transform:scale(.4);opacity:0;}to{transform:scale(1);opacity:1;}}
+  @media (prefers-reduced-motion:reduce){.double-banner.show .db-text{animation:none;}.double-badge{animation:none;}}
   /* team boxes on roster screen */
   #teamBoxes{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px;margin-top:14px;}
   .team-box{
@@ -387,6 +415,7 @@
   <div id="game" class="hidden">
     <div class="game-top">
       <div class="round" id="roundLabel">Q1 / 10</div>
+      <span id="doubleBadge" class="double-badge hidden">🔥 점수 2배 적용 중</span>
       <div class="clip-len" id="clipLabel">클립 0.2초</div>
     </div>
     <div class="arena">
@@ -402,6 +431,9 @@
         <button class="btn" id="nextBtn">다음 문제 →</button>
       </div>
       <div class="replay-note" id="replayNote"></div>
+      <div class="controls" style="margin-top:18px;">
+        <button class="btn double" id="doubleBtn">🔥 점수 2배 이벤트</button>
+      </div>
     </div>
     <div class="kbd-help">
       <kbd>Space</kbd> 재생 · <kbd>R</kbd> 한 번 더(2배) · <kbd>T</kbd> 점점 늘리기 · <kbd>Enter</kbd> 정답 · <kbd>→</kbd> 다음
@@ -464,6 +496,7 @@
 
 <!-- offscreen YT player: quiz clips when only a YouTube link is given -->
 <div id="ytQuizDock"><div id="ytQuizMount"></div></div>
+<div class="double-banner" id="doubleBanner"><div class="db-text">🔥 점수 2배 이벤트! 🔥</div></div>
 <div class="scoreboard hidden" id="scoreboard">
   <h3>SCOREBOARD</h3>
   <div id="scoreRows"></div>
@@ -477,7 +510,8 @@
   const songs = []; // {title, file:{name,url,isVideo,buffer}, ytId, ytStart, offset}
   let clipLen = 0.2, posMode = 'random', cur = 0, playsUsed = 0, hintCount = 0, growCount = 0;
   let students = [];              // {name, score}
-  const awarded = new Set();      // 현재 문제에서 점수 준 학생/팀 index
+  const awarded = new Map();      // 현재 문제에서 점수 준 index → 준 점수(1 또는 2)
+  let doubleActive = false;       // 이번 문제 점수 2배 이벤트 여부
   const esc = t => String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;');
   let rosterMode = 'solo';        // 'solo' | 'team'
   let teams = [];                 // {name, members}
@@ -586,13 +620,20 @@
     if(!students.length){ box.classList.add('hidden'); return; }
     box.classList.remove('hidden');
     box.innerHTML='';
+    if(doubleActive){
+      const note=document.createElement('div');
+      note.style.cssText='width:100%;color:var(--gold);font-weight:800;font-size:14px;';
+      note.textContent='🔥 점수 2배 이벤트 적용 중 — 클릭 시 +2점';
+      box.appendChild(note);
+    }
     students.forEach((st,i)=>{
       const b=document.createElement('button');
       b.className='chip'+(awarded.has(i)?' awarded':'');
+      if(awarded.has(i)) b.dataset.pts=awarded.get(i);
       b.textContent=st.name;
       b.onclick=()=>{
-        if(awarded.has(i)){ awarded.delete(i); st.score--; }   // 실수로 눌렀을 때 다시 누르면 취소
-        else { awarded.add(i); st.score++; }
+        if(awarded.has(i)){ st.score-=awarded.get(i); awarded.delete(i); } // 취소: 줬던 점수만큼 차감
+        else { const pts=doubleActive?2:1; awarded.set(i,pts); st.score+=pts; }
         renderChips(); renderScoreboard();
       };
       box.appendChild(b);
@@ -957,6 +998,11 @@
     hintCount=0;
     growCount=0;
     awarded.clear();
+    doubleActive=false;
+    $('doubleBtn').classList.remove('active');
+    $('doubleBtn').textContent='🔥 점수 2배 이벤트';
+    $('doubleBadge').classList.add('hidden');
+    $('doubleBanner').classList.remove('show');
     stopAll();
     $('roundLabel').textContent=`Q${cur+1} / ${songs.length}`;
     $('qnum').textContent=`Q${cur+1}`;
@@ -1034,6 +1080,20 @@
       }catch(err){ toast('유튜브 재생에 실패했어요. 인터넷 연결을 확인하세요.'); }
     }
   }
+
+  $('doubleBtn').onclick=()=>{
+    doubleActive=!doubleActive;
+    const btn=$('doubleBtn');
+    btn.classList.toggle('active', doubleActive);
+    btn.textContent = doubleActive ? '🔥 2배 이벤트 진행 중! (누르면 취소)' : '🔥 점수 2배 이벤트';
+    $('doubleBadge').classList.toggle('hidden', !doubleActive);
+    if(doubleActive){
+      const bn=$('doubleBanner');
+      bn.classList.remove('show'); void bn.offsetWidth; bn.classList.add('show');
+      playTada(); // 빵빠레
+      clearTimeout(bn._tm); bn._tm=setTimeout(()=>bn.classList.remove('show'), 2500);
+    }
+  };
 
   $('playDisc').onclick=()=>{ playClip(clipLen); if(playsUsed===0) playsUsed=1; };
 
