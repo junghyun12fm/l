@@ -337,6 +337,7 @@
     <div class="start-bar">
       <button class="btn primary" id="startBtn" disabled>퀴즈 시작 ▶</button>
     </div>
+    <p class="sub" id="startHint" style="text-align:center;margin-top:10px;min-height:1.4em;"></p>
   </div>
 
   <!-- ========== ROSTER (참가 학생) ========== -->
@@ -703,7 +704,16 @@
       const hit = d.results && d.results[0];
       if(hit && hit.artworkUrl100){
         s.artUrl = hit.artworkUrl100.replace('100x100','600x600');
-        renderList(); scheduleSave();
+        // 전체를 다시 그리면 입력 중인 다른 칸이 지워지므로, 해당 행의 썸네일만 갱신
+        const idx=songs.indexOf(s);
+        const row=$('songList').children[idx];
+        if(row){
+          const img=row.querySelector('.art-thumb');
+          if(img){ img.src=s.artUrl; img.style.display=''; }
+          const btn=row.querySelector('.art-pick');
+          if(btn) btn.textContent='🖼 아트 교체';
+        }
+        scheduleSave();
       }
     }catch(e){ /* 오프라인 등: 조용히 넘어감 */ }
   }
@@ -806,14 +816,18 @@
       row.querySelector('.in-title').onchange = ()=>fetchArt(s); // 입력 마치면 앨범아트 자동 검색
       row.querySelector('.art-pick').onclick = ()=>{ pickArtTarget=i; $('artPick').click(); };
       row.querySelector('.pick').onclick = ()=>{ pickTarget=i; $('filePick').click(); };
-      row.querySelector('.in-yt').onchange = ev=>{
+      const ytInput=row.querySelector('.in-yt');
+      ytInput.oninput = ev=>{ // 입력 즉시 인식 (전체 다시 그리지 않음 → 입력 내용 보존)
         s.ytUrl = ev.target.value.trim();
         const p = parseYT(s.ytUrl);
-        if(s.ytUrl && !p){ toast('유튜브 링크를 인식하지 못했어요.'); s.ytId=null; }
-        else if(p){ s.ytId=p.id; if(!s.highlight && p.start) s.highlight=p.start; if(EMBED_OK) loadYT(); }
-        else s.ytId=null;
-        renderList();
-        scheduleSave();
+        s.ytId = p ? p.id : null;
+        if(p && !s.highlight && p.start){ s.highlight=p.start; row.querySelector('.in-sec').value=p.start; }
+        if(p && EMBED_OK) loadYT();
+        updateStart(); scheduleSave();
+      };
+      ytInput.onchange = ()=>{
+        if(s.ytUrl && !s.ytId) toast('유튜브 링크를 인식하지 못했어요.');
+        renderList(); // 칸에서 나갈 때만 배지 등 새로고침
       };
       row.querySelector('.in-sec').oninput = ev=>{ s.highlight=ev.target.value; scheduleSave(); };
       row.querySelector('.in-comment').oninput = ev=>{ s.comment=ev.target.value; scheduleSave(); };
@@ -826,8 +840,22 @@
   function songReady(s){
     return s.title.trim() && s.file && s.file.buffer && s.ytId;
   }
+  function missingItems(s){
+    const m=[];
+    if(!s.title.trim()) m.push('제목');
+    if(!(s.file && s.file.buffer)) m.push('mp3 파일');
+    if(!s.ytId) m.push('MV 링크');
+    return m;
+  }
   function updateStart(){
-    $('startBtn').disabled = !(songs.length>0 && songs.every(songReady));
+    const bad=songs.map((s,i)=>({i, m:missingItems(s)})).filter(x=>x.m.length);
+    $('startBtn').disabled = !(songs.length>0 && bad.length===0);
+    const hint=$('startHint');
+    if(hint){
+      hint.textContent = (songs.length>0 && bad.length)
+        ? `${bad[0].i+1}번 문제에 ${bad[0].m.join(', ')} 입력이 필요해요`
+        : '';
+    }
   }
 
   $('lenSeg').onclick = e=>{
